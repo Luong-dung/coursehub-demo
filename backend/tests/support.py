@@ -80,6 +80,7 @@ def running_api(schema: str):
         port = sock.getsockname()[1]
     env = os.environ.copy()
     env["PGOPTIONS"] = f"-c search_path={schema}"
+    env["PGAPPNAME"] = schema
     env["PYTHONUTF8"] = "1"
     with tempfile.TemporaryFile(mode="w+b") as log:
         process = subprocess.Popen(
