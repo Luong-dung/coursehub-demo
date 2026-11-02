@@ -1,0 +1,7 @@
+PASS POST/POST: statuses=[201,409]; capacity=1, enrolled=1, remaining=0; one CREATED event.
+PASS error cases: duplicate=409, missing student/class=404, invalid capacity=422; no extra registration/audit.
+PASS ordered POST/PATCH: database confirms both waiting; POST=201, PATCH=409; capacity=2, enrolled=2.
+PASS PATCH-first: PATCH=200, POST=409; enrolled never exceeds capacity.
+FINAL STATE: {'class_id': 'RACE-01', 'capacity': 1, 'enrolled': 1, 'remaining': 0}
+AUDIT: {'CANCELLED': 1, 'CREATED': 2}
+CLEANUP PASS: schema removed, all fixture data/locks/indexes removed, original tables untouched.
