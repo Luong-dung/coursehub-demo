@@ -1,0 +1,94 @@
+{
+  "info": {
+    "name": "CourseHub - Enrollment Events",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "history_student_id",
+      "value": "22000001"
+    }
+  ],
+  "item": [
+    {
+      "name": "History with data",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/enrollment-events?student_id={{history_student_id}}&limit=10"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "pm.expect(pm.response.json().length).to.be.above(0);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "History without data",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/enrollment-events?student_id=99999999"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "pm.expect(pm.response.json()).to.eql([]);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid limit",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/enrollment-events?limit=101"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(422);",
+              ""
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid event type",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/enrollment-events?event_type=INVALID"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.response.to.have.status(422);",
+              ""
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
