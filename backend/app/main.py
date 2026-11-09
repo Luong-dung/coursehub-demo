@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Response, status
 from sqlalchemy import text
@@ -167,21 +167,23 @@ def update_section_capacity(
     section_id: str,
     payload: CapacityUpdate,
 ) -> dict[str, Any]:
-    sql = """
-        SELECT
-            cs.capacity,
-            COUNT(e.student_id) AS enrolled
-        FROM class_sections AS cs
-        LEFT JOIN enrollments AS e ON e.class_section_id = cs.id
-        WHERE cs.id = :section_id
-        GROUP BY cs.id, cs.capacity
+    lock_section_sql = """
+        SELECT id
+        FROM class_sections
+        WHERE id = :section_id
+        FOR UPDATE
+    """
+    count_sql = """
+        SELECT COUNT(*)
+        FROM enrollments
+        WHERE class_section_id = :section_id
     """
 
     with engine.begin() as connection:
         row = connection.execute(
-            text(sql),
+            text(lock_section_sql),
             {"section_id": section_id},
-        ).mappings().first()
+        ).first()
 
         if row is None:
             raise HTTPException(
@@ -189,7 +191,9 @@ def update_section_capacity(
                 detail="Khong tim thay lop hoc phan",
             )
 
-        enrolled = int(row["enrolled"])
+        enrolled = int(connection.execute(
+            text(count_sql), {"section_id": section_id}
+        ).scalar_one())
         if payload.capacity < enrolled:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -245,6 +249,33 @@ def list_student_enrollments(student_id: str) -> list[dict[str, Any]]:
             {"student_id": student_id},
         ).mappings().all()
 
+    return [dict(row) for row in rows]
+
+
+@app.get("/enrollment-events")
+def list_enrollment_events(
+    student_id: str | None = Query(default=None, min_length=8, max_length=8),
+    event_type: Literal["CREATED", "CANCELLED"] | None = None,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=100),
+) -> list[dict[str, Any]]:
+    sql = """
+        SELECT id, student_id, class_section_id, event_type,
+               source, dataset, occurred_at
+        FROM enrollment_events
+        WHERE 1 = 1
+    """
+    parameters: dict[str, Any] = {"skip": skip, "limit": limit}
+    if student_id is not None:
+        sql += " AND student_id = :student_id"
+        parameters["student_id"] = student_id
+    if event_type is not None:
+        sql += " AND event_type = :event_type"
+        parameters["event_type"] = event_type
+    sql += " ORDER BY occurred_at DESC, id DESC OFFSET :skip LIMIT :limit"
+
+    with engine.connect() as connection:
+        rows = connection.execute(text(sql), parameters).mappings().all()
     return [dict(row) for row in rows]
 
 
