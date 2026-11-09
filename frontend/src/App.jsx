@@ -4,6 +4,7 @@ import Notice from "./components/Notice.jsx";
 import SectionTable from "./components/SectionTable.jsx";
 import EnrollmentList from "./components/EnrollmentList.jsx";
 import StudentForm from "./components/StudentForm.jsx";
+import EventHistory from "./components/EventHistory.jsx";
 
 export default function App() {
   const [draftId, setDraftId] = useState("22000004");
@@ -158,6 +159,7 @@ export default function App() {
           </section>
         </div>
       )}
+      {!loading && !error && <EventHistory studentId={studentId} refresh={refresh} />}
       <footer>Số chỗ và đăng ký được đọc từ API; Backend quyết định tính hợp lệ.</footer>
     </main>
   );
