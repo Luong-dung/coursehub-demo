@@ -167,21 +167,23 @@ def update_section_capacity(
     section_id: str,
     payload: CapacityUpdate,
 ) -> dict[str, Any]:
-    sql = """
-        SELECT
-            cs.capacity,
-            COUNT(e.student_id) AS enrolled
-        FROM class_sections AS cs
-        LEFT JOIN enrollments AS e ON e.class_section_id = cs.id
-        WHERE cs.id = :section_id
-        GROUP BY cs.id, cs.capacity
+    lock_section_sql = """
+        SELECT id
+        FROM class_sections
+        WHERE id = :section_id
+        FOR UPDATE
+    """
+    count_sql = """
+        SELECT COUNT(*)
+        FROM enrollments
+        WHERE class_section_id = :section_id
     """
 
     with engine.begin() as connection:
         row = connection.execute(
-            text(sql),
+            text(lock_section_sql),
             {"section_id": section_id},
-        ).mappings().first()
+        ).first()
 
         if row is None:
             raise HTTPException(
@@ -189,7 +191,9 @@ def update_section_capacity(
                 detail="Khong tim thay lop hoc phan",
             )
 
-        enrolled = int(row["enrolled"])
+        enrolled = int(connection.execute(
+            text(count_sql), {"section_id": section_id}
+        ).scalar_one())
         if payload.capacity < enrolled:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
