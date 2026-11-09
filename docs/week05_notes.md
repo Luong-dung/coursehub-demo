@@ -23,7 +23,26 @@ Mở http://127.0.0.1:5173/.
 - `enrollment_events` (demo) có thêm CREATED rồi CANCELLED cho 22000004/WEB-01.
 - `GET /students/99999999/enrollments` → 404.
 
+## Bài tập 3 – lịch sử có phân trang
+- Backend: `GET /enrollment-events` thêm tham số `dataset` (`demo` | `performance`, sai giá trị → 422). Không truyền thì giữ hành vi cũ.
+- Frontend: `components/EventHistory.jsx`, gọi `?student_id=…&dataset=demo&skip=…&limit=6`, hiển thị 5 dòng/trang (lấy dư 1 dòng để biết còn trang sau). Không tải 100.000 sự kiện performance về trình duyệt.
+
+## Bài tập 4 – tìm kiếm/phân trang phía server cho `GET /sections`
+| Tham số | Ý nghĩa | Giới hạn |
+|---|---|---|
+| `q` | ILIKE trên mã lớp, mã học phần, tên học phần; `%`/`_` được escape | 1–50 ký tự |
+| `course_code` | lọc đúng mã học phần | 1–20 ký tự |
+| `available_only` | chỉ lớp còn chỗ (đã có) | – |
+| `skip` | bỏ qua N dòng | ≥ 0 |
+| `limit` | kích thước trang; không truyền = trả toàn bộ như cũ | 1–100 |
+
+Thứ tự `ORDER BY class_id` (khóa duy nhất) nên các trang ổn định, không trùng/sót.
+
+## Kiểm thử Bài tập 3–4 (2026-11-09, schema PostgreSQL tạm, không đụng `public`)
+- `python -m backend.tests.week05_exercises_test` → `week05 exercises: OK`: lọc dataset demo, phân trang lịch sử, ghép các trang `/sections` (limit=2) đúng bằng danh sách đầy đủ, tìm `web-0` → WEB-01, WEB-02, tìm theo tên học phần, `%` không khớp tất cả, chuỗi `' OR 1=1` trả rỗng, tham số vượt giới hạn → 422.
+- Hồi quy: `exercise01_event_history_test` PASS, `exercise05_project_concurrency_test` PASS, `npm test` 8/8, `npm run build` OK.
+- Không chạy `week04_concurrency_test` vì nó xóa đăng ký RACE-01 trên dữ liệu demo thật.
+
 ## Chưa làm
 - Bản phác Figma (cần tài khoản Figma, tự làm).
-- Kiểm tra trên trình duyệt thật (hai cửa sổ RACE-01 → 409, màn hình 390 px): chưa chạy trong phiên này.
-- Bài tập 3 (lịch sử có phân trang: `GET /enrollment-events` chưa lọc được theo `dataset`) và Bài tập 4.
+- Kiểm tra trên trình duyệt thật (hai cửa sổ RACE-01 → 409, màn hình 390 px, màn hình lịch sử): chưa chạy trong phiên này.

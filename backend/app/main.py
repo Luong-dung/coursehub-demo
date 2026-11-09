@@ -115,19 +115,40 @@ def list_lecturers() -> list[dict[str, Any]]:
 @app.get("/sections")
 def list_sections(
     available_only: bool = False,
+    q: str | None = Query(default=None, min_length=1, max_length=50),
+    course_code: str | None = Query(default=None, min_length=1, max_length=20),
+    skip: int = Query(default=0, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
 ) -> list[dict[str, Any]]:
+    # Bai tap 5.4: loc/phan trang tai PostgreSQL. Khong truyen limit thi giu
+    # hanh vi cu (tra toan bo) cho frontend Buoi 5.
     sql = """
-        SELECT class_id, course_code, capacity, enrolled, remaining
-        FROM v_section_summary
+        SELECT s.class_id, s.course_code, s.capacity, s.enrolled, s.remaining
+        FROM v_section_summary s
+        JOIN courses c ON c.code = s.course_code
+        WHERE 1 = 1
     """
+    parameters: dict[str, Any] = {"skip": skip}
 
     if available_only:
-        sql += " WHERE remaining > 0"
+        sql += " AND s.remaining > 0"
+    if course_code is not None:
+        sql += " AND s.course_code = :course_code"
+        parameters["course_code"] = course_code
+    if q is not None:
+        sql += """ AND (s.class_id ILIKE :pattern OR s.course_code ILIKE :pattern
+                     OR c.name ILIKE :pattern)"""
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        parameters["pattern"] = f"%{escaped}%"
 
-    sql += " ORDER BY class_id"
+    # class_id la khoa duy nhat nen thu tu on dinh giua cac trang.
+    sql += " ORDER BY s.class_id OFFSET :skip"
+    if limit is not None:
+        sql += " LIMIT :limit"
+        parameters["limit"] = limit
 
     with engine.connect() as connection:
-        rows = connection.execute(text(sql)).mappings().all()
+        rows = connection.execute(text(sql), parameters).mappings().all()
 
     return [dict(row) for row in rows]
 
@@ -266,6 +287,7 @@ def list_student_enrollments(student_id: str) -> list[dict[str, Any]]:
 def list_enrollment_events(
     student_id: str | None = Query(default=None, min_length=8, max_length=8),
     event_type: Literal["CREATED", "CANCELLED"] | None = None,
+    dataset: Literal["demo", "performance"] | None = None,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=10, ge=1, le=100),
 ) -> list[dict[str, Any]]:
@@ -282,6 +304,9 @@ def list_enrollment_events(
     if event_type is not None:
         sql += " AND event_type = :event_type"
         parameters["event_type"] = event_type
+    if dataset is not None:
+        sql += " AND dataset = :dataset"
+        parameters["dataset"] = dataset
     sql += " ORDER BY occurred_at DESC, id DESC OFFSET :skip LIMIT :limit"
 
     with engine.connect() as connection:

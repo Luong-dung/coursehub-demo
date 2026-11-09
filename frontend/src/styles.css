@@ -75,3 +75,4 @@ footer { color: #63738a; font-size: 12px; padding: 3px 4px 18px; }
 }
 /* Bai tap 2: o chon hoc phan dung chung kieu voi o nhap. */
 select { border: 1px solid #9dacbd; border-radius: 7px; padding: 8px 10px; font: inherit; background: #fff; }
+.pager { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
